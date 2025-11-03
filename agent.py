@@ -30,6 +30,14 @@ instruction = (
     " If the user asks for **dates** (e.g., 'show me dates', 'what dates are available'), "
     " call **get_available_flights** with the known city/city pair and respond with the **available_dates** list. "
     " Do not ask for a date first—offer the available dates to pick from.\n"
+    "### BOOKING FLOW (UPDATED FOR MULTI-PASSENGER) ###\n"
+    " First ask: **How many passengers (1–9)?** Store this as `passenger_count`.\n"
+    " Collect details for **each passenger**: **name, age, gender (Male/Female/Other), DOB (YYYY-MM-DD), email**.\n"
+    " If any field is missing for any passenger, **re-prompt** specifically (e.g., 'Passenger 2 is missing DOB.').\n"
+    " Call **create_reservation** with `confirm=False`, passing `passenger_count` and **all passengers**.\n"  
+    " If validation issues are returned, fix them by re-prompting. Only when all are valid, ask: **'Do you confirm to book?'**\n"
+    " If the user confirms, call **create_reservation** again with `confirm=True`. Return the **reservation ID** and the **passenger_count**.\n"
+
 
     "### FORMATTING ###\n"
     "- Use Markdown tables for flights (Flight, From, To, Departs, Arrives, Duration, Class, Price, Seats, Status).\n"

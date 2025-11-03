@@ -1,4 +1,4 @@
-# aroya_air/models.py
+# aroya_air/models.py  (only the Flight class changed: add CLASS_MULTIPLIER + prices in to_public)
 from __future__ import annotations
 from typing import List, Optional, Literal, Dict, Any
 from pydantic import BaseModel, Field, EmailStr
@@ -16,6 +16,13 @@ class Gender(str, Enum):
     FEMALE = "Female"
     OTHER = "Other"
 
+# 👇 You can tweak these multipliers any time
+CLASS_MULTIPLIER: Dict[str, float] = {
+    "Economy": 1.00,
+    "Business": 1.60,
+    "First": 2.25,
+}
+
 class Flight(BaseModel):
     flight_id: str
     airline: str
@@ -32,11 +39,18 @@ class Flight(BaseModel):
     aircraft_type: str
     baggage_allowance: str
     available_classes: List[Literal["Economy","Business","First"]]
-    price_usd: float
+    price_usd: float  # base price (Economy baseline)
     seats_available: int
     wifi_available: bool
     inflight_entertainment: bool
     status: FlightStatus
+
+    def _derived_class_prices(self) -> Dict[str, float]:
+        prices: Dict[str, float] = {}
+        for c in self.available_classes:
+            m = CLASS_MULTIPLIER.get(c, 1.0)
+            prices[c] = round(float(self.price_usd) * m, 2)
+        return prices
 
     def to_public(self) -> Dict[str, Any]:
         return {
@@ -59,7 +73,8 @@ class Flight(BaseModel):
             "aircraft_type": self.aircraft_type,
             "baggage_allowance": self.baggage_allowance,
             "available_classes": self.available_classes,
-            "price_usd": round(float(self.price_usd), 2),
+            "prices_usd": self._derived_class_prices(),   # 👈 per-class prices
+            "base_price_usd": round(float(self.price_usd), 2),
             "seats_available": self.seats_available,
             "amenities": {
                 "wifi": self.wifi_available,
@@ -69,10 +84,8 @@ class Flight(BaseModel):
         }
 
 class SearchCriteria(BaseModel):
-    # ✳️ All fields optional now for exploratory search
     departure_city: Optional[str] = Field(None, description="Exact departure city name")
     arrival_city: Optional[str]   = Field(None, description="Exact arrival city name")
-    # date stays a date, we'll parse from flexible strings in tools/utils
     departure_date: Optional[date] = None
     passengers: int = Field(1, ge=1, le=9)
     class_preference: Optional[Literal["Economy","Business","First"]] = None
@@ -86,14 +99,15 @@ class Passenger(BaseModel):
 
 class BookingDetails(BaseModel):
     flight_id: str
-    passenger: Passenger
+    passengers: List[Passenger]
     seat_class: Literal["Economy","Business","First"] = "Economy"
     confirm: bool = False
 
 class Reservation(BaseModel):
     reservation_id: str
     flight_id: str
-    passenger: Passenger
+    passengers: List[Passenger]
+    passenger_count: int
     seat_class: Literal["Economy","Business","First"]
     total_price_usd: float
     booked_at: datetime
